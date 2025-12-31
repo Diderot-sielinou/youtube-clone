@@ -1,10 +1,10 @@
-import React from "react";
+import PropTypes from "prop-types";
 
 export default function LeftNavMenuItem({ text, icon, className, action }) {
   return (
     <div
       className={
-        "text-white text-sm cursor-pointer h-10 flex items-center px-3 mb-[1px] rounded-lg hover:bg-white/[0.15] " +
+        "text-white text-sm cursor-pointer h-10 flex items-center px-3 mb-[1px] rounded-lg hover:bg-white/[0.15] transition-colors " +
         className
       }
       onClick={action}
@@ -14,3 +14,15 @@ export default function LeftNavMenuItem({ text, icon, className, action }) {
     </div>
   );
 }
+
+LeftNavMenuItem.propTypes = {
+  text: PropTypes.string.isRequired,
+  icon: PropTypes.node.isRequired,
+  className: PropTypes.string,
+  action: PropTypes.func,
+};
+
+LeftNavMenuItem.defaultProps = {
+  className: "",
+  action: () => {},
+};
