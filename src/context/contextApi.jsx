@@ -4,6 +4,7 @@ import { fetchDataFromApi } from "../utils/api";
 import { useAuth } from "../hooks/useAuth";
 import { useFirestore } from "../hooks/useFirestore";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const Context = createContext();
 
 export const AppContext = ({ children }) => {

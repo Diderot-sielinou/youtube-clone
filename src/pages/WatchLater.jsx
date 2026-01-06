@@ -1,162 +1,167 @@
 import { useState, useEffect, useContext } from "react";
 import { Link } from "react-router-dom";
-import { MdWatchLater, MdDelete, MdPlayArrow } from "react-icons/md";
+import { MdPlayArrow, MdShuffle, MdClose, MdWatchLater } from "react-icons/md";
+import { BsFillCheckCircleFill } from "react-icons/bs";
 import { abbreviateNumber } from "js-abbreviation-number";
+
 import { Context } from "../context/contextApi";
 import LeftNav from "../components/LeftNav";
 import VideoLength from "../shared/videoLength";
 
 export default function WatchLater() {
   const [watchLater, setWatchLater] = useState([]);
-  const [localLoading, setLocalLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const { fetchWatchLater, removeWatchLater } = useContext(Context);
+  const { fetchWatchLater, removeWatchLater, user } = useContext(Context);
 
   useEffect(() => {
-    document.getElementById("root").classList.remove("custom-h");
     loadWatchLater();
   }, []);
 
   const loadWatchLater = async () => {
-    setLocalLoading(true);
+    setLoading(true);
     const data = await fetchWatchLater();
-    setWatchLater(data);
-    setLocalLoading(false);
+    setWatchLater(data || []);
+    setLoading(false);
   };
 
-  const handleRemoveFromWatchLater = async (videoId) => {
-    const result = await removeWatchLater(videoId);
-    if (result?.success) {
-      setWatchLater(watchLater.filter((item) => item.videoId !== videoId));
-    }
+  const handleRemove = async (videoId) => {
+    await removeWatchLater(videoId);
+    setWatchLater(watchLater.filter((item) => item.videoId !== videoId));
   };
 
-  // Calculate total duration
-  const totalDuration = watchLater.reduce((acc, video) => acc + (video.duration || 0), 0);
-  const formatTotalDuration = () => {
-    const hours = Math.floor(totalDuration / 3600);
-    const minutes = Math.floor((totalDuration % 3600) / 60);
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
+  const totalDuration = watchLater.reduce((acc, item) => acc + (item.duration || 0), 0);
+  const formatTotalDuration = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours} hr ${minutes} min`;
     return `${minutes} min`;
   };
 
   return (
     <div className="flex flex-row h-[calc(100%-56px)]">
       <LeftNav />
-      <div className="grow w-[calc(100%-240px)] h-full overflow-y-auto bg-black">
-        <div className="flex flex-col lg:flex-row gap-6 p-5">
+      <div className="flex-1 overflow-y-auto bg-[#0f0f0f]">
+        <div className="flex gap-6 p-6">
           {/* Sidebar - Playlist Info */}
-          <div className="lg:w-80 flex-shrink-0">
-            <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-xl p-6 sticky top-5">
-              {/* Preview Thumbnail */}
-              {watchLater.length > 0 && watchLater[0].thumbnail && (
-                <div className="relative rounded-lg overflow-hidden mb-4 aspect-video">
+          <div className="w-[360px] flex-shrink-0">
+            <div className="sticky top-6 bg-gradient-to-b from-[#2d1f3d] to-[#1a1a2e] rounded-2xl p-6 overflow-hidden">
+              {/* Thumbnail */}
+              <div className="relative aspect-video rounded-xl overflow-hidden mb-4">
+                {watchLater[0]?.thumbnail ? (
                   <img
                     src={watchLater[0].thumbnail}
-                    alt="Playlist thumbnail"
+                    alt="Playlist cover"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <Link
-                      to={`/video/${watchLater[0].videoId}`}
-                      className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded-full font-medium hover:bg-gray-200 transition-colors"
-                    >
-                      <MdPlayArrow className="text-xl" />
-                      Play All
-                    </Link>
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+                    <MdWatchLater className="text-white text-6xl" />
                   </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-3 mb-4">
-                <MdWatchLater className="text-3xl text-white" />
-                <h1 className="text-2xl font-bold text-white">Watch Later</h1>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               </div>
 
-              <div className="text-white/80 text-sm space-y-1">
-                <p>{watchLater.length} video{watchLater.length !== 1 ? "s" : ""}</p>
+              {/* Playlist Title */}
+              <h1 className="text-white text-2xl font-bold mb-2">Watch later</h1>
+              <p className="text-white/60 text-sm mb-1">{user?.displayName || "User"}</p>
+              <p className="text-white/50 text-xs mb-1">
+                {watchLater.length} videos • No views • {formatTotalDuration(totalDuration)}
+              </p>
+              <p className="text-white/40 text-xs mb-4">Updated today</p>
+
+              {/* Actions */}
+              <div className="flex gap-2 mb-4">
                 {watchLater.length > 0 && (
-                  <p>Total: {formatTotalDuration()}</p>
+                  <>
+                    <Link
+                      to={`/video/${watchLater[0]?.videoId}`}
+                      className="flex-1 flex items-center justify-center gap-2 bg-white text-black font-medium py-2.5 rounded-full hover:bg-gray-200 transition-colors"
+                    >
+                      <MdPlayArrow className="text-2xl" />
+                      Play all
+                    </Link>
+                    <button className="flex items-center justify-center w-12 h-10 bg-white/10 text-white rounded-full hover:bg-white/20 transition-colors">
+                      <MdShuffle className="text-xl" />
+                    </button>
+                  </>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Videos List */}
-          <div className="flex-1">
-            {localLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-10 h-10 border-4 border-white/20 border-t-red-500 rounded-full animate-spin"></div>
-              </div>
-            ) : watchLater.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-white/70">
-                <MdWatchLater className="text-6xl mb-4" />
-                <h2 className="text-xl font-medium mb-2">No videos saved</h2>
-                <p className="text-sm">Save videos to watch them later</p>
-                <Link
-                  to="/"
-                  className="mt-6 px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors"
+          {/* Video List */}
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex gap-4 mb-2 p-2 animate-pulse">
+                  <div className="w-8 text-center text-white/50">{index + 1}</div>
+                  <div className="w-[160px] h-[90px] bg-white/10 rounded-lg" />
+                  <div className="flex-1">
+                    <div className="h-5 bg-white/10 rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-white/10 rounded w-1/2" />
+                  </div>
+                </div>
+              ))
+            ) : watchLater.length > 0 ? (
+              watchLater.map((item, index) => (
+                <div
+                  key={item.videoId}
+                  className="flex items-center gap-4 p-2 rounded-xl hover:bg-white/5 group"
                 >
-                  Browse Videos
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {watchLater.map((video, index) => (
-                  <div
-                    key={video.id}
-                    className="flex gap-4 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group"
-                  >
-                    {/* Index */}
-                    <div className="flex items-center justify-center w-8 text-white/50 text-sm">
-                      {index + 1}
-                    </div>
+                  {/* Number */}
+                  <div className="w-8 text-center text-white/50 text-sm">{index + 1}</div>
 
-                    {/* Thumbnail */}
-                    <Link
-                      to={`/video/${video.videoId}`}
-                      className="relative flex-shrink-0 w-32 h-20 md:w-40 md:h-24 rounded-lg overflow-hidden bg-slate-800"
-                    >
+                  {/* Thumbnail */}
+                  <Link to={`/video/${item.videoId}`}>
+                    <div className="relative w-[160px] h-[90px] rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
                       <img
-                        src={video.thumbnail}
-                        alt={video.title}
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-cover"
+                        src={item.thumbnail}
+                        alt={item.title}
                       />
-                      {video.duration && <VideoLength time={video.duration} />}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      {item.duration && <VideoLength time={item.duration} />}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
                         <MdPlayArrow className="text-white text-4xl" />
                       </div>
-                    </Link>
-
-                    {/* Info */}
-                    <div className="flex-1 flex flex-col justify-center overflow-hidden">
-                      <Link
-                        to={`/video/${video.videoId}`}
-                        className="text-white font-medium line-clamp-2 hover:text-red-500 transition-colors text-sm md:text-base"
-                      >
-                        {video.title}
-                      </Link>
-                      <p className="text-white/70 text-xs md:text-sm mt-1">
-                        {video.channelTitle}
-                      </p>
-                      <p className="text-white/50 text-xs mt-1">
-                        {abbreviateNumber(video.views || 0, 2)} views
-                        {video.publishedTimeText && ` • ${video.publishedTimeText}`}
-                      </p>
                     </div>
+                  </Link>
 
-                    {/* Delete Button */}
-                    <button
-                      onClick={() => handleRemoveFromWatchLater(video.videoId)}
-                      className="self-center p-2 text-white/50 hover:text-red-500 hover:bg-white/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                      title="Remove from Watch Later"
-                    >
-                      <MdDelete className="text-xl" />
-                    </button>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <Link to={`/video/${item.videoId}`}>
+                      <h3 className="text-white font-medium line-clamp-2 mb-1 hover:text-white/80">
+                        {item.title}
+                      </h3>
+                    </Link>
+                    <div className="flex items-center text-white/60 text-xs">
+                      <span>{item.channelTitle}</span>
+                      <BsFillCheckCircleFill className="text-[10px] ml-1" />
+                      <span className="mx-1">•</span>
+                      <span>{abbreviateNumber(item.views || 0, 1)} views</span>
+                      {item.publishedTimeText && (
+                        <>
+                          <span className="mx-1">•</span>
+                          <span>{item.publishedTimeText}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                ))}
+
+                  {/* Remove */}
+                  <button
+                    onClick={() => handleRemove(item.videoId)}
+                    className="opacity-0 group-hover:opacity-100 p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                  >
+                    <MdClose className="text-xl" />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-white/50">
+                <MdWatchLater className="text-8xl mb-4 opacity-50" />
+                <p className="text-xl font-medium mb-2">No videos in Watch Later</p>
+                <p className="text-sm">Save videos to watch later</p>
               </div>
             )}
           </div>
