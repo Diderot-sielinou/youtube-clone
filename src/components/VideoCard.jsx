@@ -1,169 +1,172 @@
-import { useState, useContext } from "react";
-import { abbreviateNumber } from "js-abbreviation-number";
+import { useState, useContext, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { BsFillCheckCircleFill } from "react-icons/bs";
-import { MdWatchLater, MdFavorite, MdMoreVert } from "react-icons/md";
+import { BsFillCheckCircleFill, BsThreeDotsVertical } from "react-icons/bs";
+import { MdWatchLater, MdPlaylistAdd, MdOutlinePlaylistAdd } from "react-icons/md";
+import { abbreviateNumber } from "js-abbreviation-number";
 import PropTypes from "prop-types";
 
-import VideoLength from "../shared/videoLength";
 import { Context } from "../context/contextApi";
+import VideoLength from "../shared/videoLength";
 
 export default function VideoCard({ video }) {
   const [showMenu, setShowMenu] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+  const menuRef = useRef(null);
 
-  const { isAuthenticated, saveFavorite, saveToWatchLater } = useContext(Context);
+  const { isAuthenticated, saveToWatchLater, saveFavorite } = useContext(Context);
 
-  const handleMenuClick = (e) => {
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleWatchLater = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenuPosition({
-      x: rect.left,
-      y: rect.bottom,
-    });
-    setShowMenu(!showMenu);
+    if (!isAuthenticated) return;
+    await saveToWatchLater(video);
+    setShowMenu(false);
   };
 
   const handleAddToFavorites = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowMenu(false);
-
+    if (!isAuthenticated) return;
     await saveFavorite(video);
-  };
-
-  const handleAddToWatchLater = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowMenu(false);
-
-    await saveToWatchLater(video);
-  };
-
-  const closeMenu = () => {
     setShowMenu(false);
   };
 
   return (
-    <div className="relative">
+    <div 
+      className="flex flex-col"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setShowMenu(false);
+      }}
+    >
+      {/* Thumbnail */}
       <Link to={`/video/${video?.videoId}`}>
-        <div className="flex flex-col mb-8 group">
-          <div className="relative h-48 md:h-40 md:rounded-xl overflow-hidden">
-            <img
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              src={video?.thumbnails?.[0]?.url}
-              alt={video?.title}
-            />
-            {video?.lengthSeconds && <VideoLength time={video?.lengthSeconds} />}
-
-            {/* Hover Actions */}
-            {isAuthenticated && (
-              <div
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={handleMenuClick}
+        <div className="relative aspect-video rounded-xl overflow-hidden bg-white/5">
+          <img
+            className="h-full w-full object-cover"
+            src={video?.thumbnails?.[0]?.url}
+            alt={video?.title}
+          />
+          {video?.lengthSeconds && <VideoLength time={video?.lengthSeconds} />}
+          
+          {/* Hover overlay with preview controls */}
+          {isHovered && (
+            <div className="absolute inset-0 bg-black/0 flex items-end justify-end p-2 gap-1">
+              <button
+                onClick={handleWatchLater}
+                className="p-1.5 bg-black/80 rounded text-white hover:bg-black transition-colors"
+                title="Watch Later"
               >
-                <button className="p-1.5 bg-black/70 hover:bg-black rounded-full text-white transition-colors">
-                  <MdMoreVert className="text-lg" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="flex text-white mt-3">
-            <div className="flex items-start">
-              <div className="flex h-9 w-9 rounded-full overflow-hidden flex-shrink-0">
-                <img
-                  className="h-full w-full object-cover"
-                  src={video?.author?.avatar?.[0]?.url}
-                  alt={video?.author?.title}
-                />
-              </div>
+                <MdWatchLater className="text-lg" />
+              </button>
+              <button
+                onClick={handleAddToFavorites}
+                className="p-1.5 bg-black/80 rounded text-white hover:bg-black transition-colors"
+                title="Add to queue"
+              >
+                <MdOutlinePlaylistAdd className="text-lg" />
+              </button>
             </div>
-            <div className="flex flex-col ml-3 overflow-hidden">
-              <span className="text-sm font-bold line-clamp-2 group-hover:text-red-500 transition-colors">
-                {video?.title}
-              </span>
-              <span className="text-[12px] font-semibold mt-2 text-white/[0.7] flex items-center">
-                {video?.author?.title}
-                {video?.author?.badges?.[0]?.type === "VERIFIED_CHANNEL" && (
-                  <BsFillCheckCircleFill className="text-white/[0.5] text-[12px] ml-1" />
-                )}
-              </span>
-              <div className="flex text-[12px] font-semibold text-white/[0.7] truncate overflow-hidden">
-                <span>{`${abbreviateNumber(video?.stats?.views || 0, 2)} views`}</span>
-                <span className="flex text-[24px] leading-none font-bold text-white/[0.7] relative top-[-10px] mx-1">
-                  .
-                </span>
-                <span className="truncate">{video?.publishedTimeText}</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </Link>
 
-      {/* Dropdown Menu */}
-      {showMenu && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={closeMenu} />
-
-          {/* Menu */}
-          <div
-            className="fixed z-50 bg-[#212121] rounded-lg shadow-lg py-2 min-w-[200px]"
-            style={{
-              top: menuPosition.y,
-              left: Math.min(menuPosition.x, window.innerWidth - 220),
-            }}
-          >
-            <button
-              onClick={handleAddToWatchLater}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-white hover:bg-white/10 transition-colors"
-            >
-              <MdWatchLater className="text-xl" />
-              <span>Save to Watch Later</span>
-            </button>
-            <button
-              onClick={handleAddToFavorites}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-white hover:bg-white/10 transition-colors"
-            >
-              <MdFavorite className="text-xl" />
-              <span>Add to Favorites</span>
-            </button>
+      {/* Video Info */}
+      <div className="flex mt-3">
+        {/* Channel Avatar */}
+        <Link to={`/video/${video?.videoId}`} className="flex-shrink-0">
+          <div className="h-9 w-9 rounded-full overflow-hidden bg-white/10">
+            {video?.author?.avatar?.[0]?.url && (
+              <img
+                className="h-full w-full object-cover"
+                src={video?.author?.avatar?.[0]?.url}
+                alt={video?.author?.title}
+              />
+            )}
           </div>
-        </>
-      )}
+        </Link>
+
+        {/* Title and Meta */}
+        <div className="flex flex-col ml-3 flex-1 overflow-hidden">
+          <Link to={`/video/${video?.videoId}`}>
+            <span className="text-white text-sm font-medium line-clamp-2 leading-5">
+              {video?.title}
+            </span>
+          </Link>
+
+          <Link to={`/video/${video?.videoId}`} className="mt-1">
+            <span className="text-white/60 text-xs flex items-center hover:text-white/80">
+              {video?.author?.title}
+              {video?.author?.badges?.[0]?.type === "VERIFIED_CHANNEL" && (
+                <BsFillCheckCircleFill className="text-white/60 text-[10px] ml-1" />
+              )}
+            </span>
+          </Link>
+
+          <div className="flex text-white/60 text-xs mt-0.5">
+            <span>{abbreviateNumber(video?.stats?.views || 0, 1)} views</span>
+            <span className="mx-1">•</span>
+            <span>{video?.publishedTimeText}</span>
+          </div>
+        </div>
+
+        {/* More Options */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              setShowMenu(!showMenu);
+            }}
+            className={`p-1 rounded-full hover:bg-white/10 transition-opacity ${
+              isHovered || showMenu ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <BsThreeDotsVertical className="text-white text-lg" />
+          </button>
+
+          {/* Dropdown Menu */}
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 w-56 bg-[#282828] rounded-xl shadow-lg overflow-hidden z-50">
+              <button
+                onClick={handleWatchLater}
+                disabled={!isAuthenticated}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-white hover:bg-white/10 transition-colors text-sm ${
+                  !isAuthenticated ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                <MdWatchLater className="text-xl" />
+                Save to Watch Later
+              </button>
+              <button
+                onClick={handleAddToFavorites}
+                disabled={!isAuthenticated}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-white hover:bg-white/10 transition-colors text-sm ${
+                  !isAuthenticated ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                <MdPlaylistAdd className="text-xl" />
+                Save to playlist
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 VideoCard.propTypes = {
-  video: PropTypes.shape({
-    videoId: PropTypes.string,
-    title: PropTypes.string,
-    thumbnails: PropTypes.arrayOf(
-      PropTypes.shape({
-        url: PropTypes.string,
-      })
-    ),
-    lengthSeconds: PropTypes.number,
-    author: PropTypes.shape({
-      title: PropTypes.string,
-      avatar: PropTypes.arrayOf(
-        PropTypes.shape({
-          url: PropTypes.string,
-        })
-      ),
-      badges: PropTypes.arrayOf(
-        PropTypes.shape({
-          type: PropTypes.string,
-        })
-      ),
-    }),
-    stats: PropTypes.shape({
-      views: PropTypes.number,
-    }),
-    publishedTimeText: PropTypes.string,
-  }),
+  video: PropTypes.object.isRequired,
 };
